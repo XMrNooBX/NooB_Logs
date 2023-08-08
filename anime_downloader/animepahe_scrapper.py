@@ -1,7 +1,7 @@
 import requests as r
 import re
 from colorama import Fore
-import os 
+from tqdm import tqdm
 def get_query(query:str):
     url = f'https://animepahe.ru/api?m=search&q={query}'
     response = r.get(url).json()
@@ -34,7 +34,7 @@ def show_synopsis(anime_id:str):
     url = f'https://animepahe.ru/anime/{anime_id}'
     response = r.get(url).text
     synopsis = re.findall(r'anime-synopsis">(.*)<', response)[0].replace('<br>', '')
-    print(Fore.CYAN + f'{synopsis}')
+    print(Fore.CYAN + f'{synopsis}',Fore.RESET)
 
 def get_ep_id(anime_id:str, episode:int):
     page = 0
@@ -74,8 +74,16 @@ def get_stream(url:str):
     stream_lnk = re.findall(r'(https://kwik\.cx/[^"]*)',response)[0]
     return stream_lnk
 
-def newest(path):
-    '''Function to get latest file in given directory'''
-    files = os.listdir(path)
-    paths = [os.path.join(path, basename) for basename in files]
-    return max(paths, key=os.path.getctime)
+def download_vid(url:str):
+    url = url
+    response = r.get(url, stream=True)
+    total_size_in_bytes= int(response.headers.get('content-length', 0))
+    block_size = 1024
+    progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True)
+    with open('test.mp4', 'wb') as file:
+        for data in response.iter_content(block_size):
+            progress_bar.update(len(data))
+            file.write(data)
+    progress_bar.close()
+    if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
+        print("ERROR, something went wrong")
