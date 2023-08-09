@@ -1,3 +1,4 @@
+import grequests as g
 import requests as r
 import re
 from colorama import Fore
@@ -36,17 +37,18 @@ def show_synopsis(anime_id:str):
     synopsis = re.findall(r'anime-synopsis">(.*)<', response)[0].replace('<br>', '')
     print(Fore.CYAN + f'{synopsis}',Fore.RESET)
 
-def get_ep_id(anime_id:str, episode:int):
-    page = 0
-    if episode%30 == 0:
-        page = int(episode/30)
-    else:
-        page = int(episode/30)+1
-    url = f'https://animepahe.ru/api?m=release&id={anime_id}&sort=episode_asc&page={page}'
-    response = r.get(url).json()['data']
-    for i in response:
-        if i['episode'] == episode:
-            return i['session']
+def get_ep_id(id:str):
+    link = f'https://animepahe.ru/api?m=release&id={id}&sort=episode_asc&page=1'
+    response = r.get(link).json()['last_page']
+    pages = [i for i in range(1,response+1)]
+    urls = [f'https://animepahe.ru/api?m=release&id={id}&sort=episode_asc&page={i}' for i in pages]
+    gresp = [g.get(url) for url in urls]
+    data = [g.map(gresp)[i].json()['data'] for i in range(len(gresp))]
+    eps = {}
+    for i in data:
+        for j in i:
+            eps.update({j['episode'] : j['session']})
+    return eps
 
 def get_ep_link(anime_id:str, ep_id:str):
     url = f'https://animepahe.ru/play/{anime_id}/{ep_id}'
