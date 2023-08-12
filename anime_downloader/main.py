@@ -6,7 +6,6 @@ import os
 ''' Bulk or indivisual anime downloader from Animepahe By Ashi and SeD''' 
 
 name = input('Enter anime name : ')
-path = r"C:\Users\Ashir\Videos\Captures"
 query = name.replace(' ', '%20')
 results = scrapper.get_query(query)
 ids = scrapper.show_results_get_id(results)
@@ -22,13 +21,18 @@ else:
 print(Fore.GREEN+'\nPlease wait while we are getting downloads ready....',Fore.RESET)
 Episodes = scrapper.get_ep_id(anime_id)
 print ('\nAvailable Episodes are : ',Fore.LIGHTMAGENTA_EX,[i for i in Episodes.keys()], Fore.RESET)
-ep_in = input("Enter all the episodes to download(seperated by single space) or Press 'a' to download All: ").split(' ')
-if len(ep_in) == 1 and ep_in[0].lower() == 'a':
-    eps = [i for i in Episodes.keys()]
-else:
-    eps = [int(i) for i in ep_in]
+raw_in = input("Enter all the episodes to download(seperated by single space or by '-' to give range) : ").split(' ')
+ep_in = []
+for i in raw_in:
+    if '-' in i:
+        num = i.split('-')
+        for j in range(int(num[0]), int(num[-1])+1):
+            ep_in.append(j)
+    else:
+        ep_in.append(int(i))
+
 dl_links = {}
-for i in eps:
+for i in ep_in:
     session = Episodes[i]
     ep_links = scrapper.get_ep_link(anime_id, session)
     print(Fore.LIGHTGREEN_EX + f"\nAvailable download options for Ep - {i}")
@@ -39,5 +43,4 @@ for i in eps:
 
 for i in dl_links.keys():
     print (f'Downloading Ep-{i}...')
-    scrapper.download_vid(dl_links[i])
-    os.rename(f"{os.getcwd()}\\test.mp4",f"{path}\\{title}_ep-{i}.mp4")
+    scrapper.download_vid(dl_links[i], title, i)
