@@ -78,6 +78,12 @@ def get_stream(url:str):
     return stream_lnk
 
 def download_vid(url:str, title:str, ep:int):
+    a=title.replace(':','')
+    b=a.replace('*','')
+    c=b.replace('?','')
+    d=c.replace('<','')
+    e=d.replace('>','')
+    title=e.replace('|','')
     if os.path.isdir(f'{title}') == False:
         os.mkdir(title)
     url = url
@@ -85,7 +91,7 @@ def download_vid(url:str, title:str, ep:int):
     total_size_in_bytes= int(response.headers.get('content-length', 0))
     block_size = 1024
     progress_bar = tqdm(total=total_size_in_bytes, unit='B', unit_scale=True)
-    with open(f'{title}\\ep_{ep}.mp4', 'wb') as file:
+    with open(f'{title}\\{title} ep_{ep}.mp4', 'wb') as file:
         for data in response.iter_content(block_size):
             progress_bar.update(len(data))
             file.write(data)
