@@ -1,7 +1,6 @@
 import animepahe_scrapper as scrapper
 from colorama import Fore
 from kwik_token import get_dl_link
-import os
 
 ''' Bulk or indivisual anime downloader from Animepahe By Ashi and SeD''' 
 
