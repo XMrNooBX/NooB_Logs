@@ -1,7 +1,8 @@
-from pySmartDL import SmartDL as dl
-import requests
+import requests as r
 import os
 import urllib.parse
+from tqdm import tqdm
+import re
 def newest(path):
     '''Function to get latest file in given directory'''
     files = os.listdir(path)
@@ -11,11 +12,26 @@ def newest(path):
 def song_data(name:str):
     '''Function to get info of given song from jiosavaan'''
     url="https://www.jiosaavn.com/api.php?__call=autocomplete.get&query="+name+"&_format=json&_marker=0&ctx=wap6dot0"
-    info=requests.get(url)
+    info=r.get(url)
     info=info.json()["songs"]["data"]
     return info
 
-song = input('Enter song name : ')   # get song name from user and store useful info in some lists
+def download_song(url:str):
+    url = url
+    response = r.get(url, stream=True)
+    total_size_in_bytes= int(response.headers.get('content-length', 0))
+    block_size = 1024
+    progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True)
+    with open('test.mp3', 'wb') as file:
+        for data in response.iter_content(block_size):
+            progress_bar.update(len(data))
+            file.write(data)
+    progress_bar.close()
+    if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
+        print("ERROR, something went wrong")
+
+song = input('Enter song name : ')   # Get song name from user and store useful info in some lists
+path = r'C:\Users\Ashir\Music'
 a = song_data(song)
 titles = []
 description = []
@@ -28,24 +44,49 @@ for i in a:
 print('Available results are : ')    # Show the available results to user and ask for user's choice
 for i in range(len(titles)):
     print(f'{i+1}. {titles[i]} : {description[i]}')
-n = int(input('\nEnter index of song to download : '))
+n = (input('\nEnter index of song to download(press "y" To get youtube results) : '))
 
-song_url = urls[n-1]                 # Extract song id from link we got from user's choice
-path = r'C:\Users\Ashir\Music'
-song_id = song_url.split('/')[-1]    
-title = song_url.split('/')[-2]
+if n!='y':
+    n = int(n)
+    song_url = urls[n-1]                 # Extract song id from link we got from user's choice
+    song_id = song_url.split('/')[-1]    
+    title = song_url.split('/')[-2]
 
-# Get direct download link of song from savaan server
-url = f'https://www.jiosaavn.com/api.php?__call=webapi.get&api_version=4&_format=json&_marker=0&ctx=wap6dot0&token={song_id}&type=song'
-r = requests.get(url)
-response = r.json()
-final_url = urllib.parse.quote(response['songs'][0]['more_info']['encrypted_media_url'])
-dwn_url = f'https://www.jiosaavn.com/api.php?__call=song.generateAuthToken&url={final_url}&bitrate=320&api_version=4&_format=json&ctx=wap6dot0&_marker=0'
-dwn_r = requests.get(dwn_url)
-lnk = dwn_r.json()
+    # Get direct download link of song from savaan server
+    url = f'https://www.jiosaavn.com/api.php?__call=webapi.get&api_version=4&_format=json&_marker=0&ctx=wap6dot0&token={song_id}&type=song'
+    resp = r.get(url)
+    response = resp.json()
+    final_url = urllib.parse.quote(response['songs'][0]['more_info']['encrypted_media_url'])
+    dwn_url = f'https://www.jiosaavn.com/api.php?__call=song.generateAuthToken&url={final_url}&bitrate=320&api_version=4&_format=json&ctx=wap6dot0&_marker=0'
+    dwn_r = r.get(dwn_url)
+    dl_lnk = re.findall(r"(.+?(?=Expires))",dwn_r.json()['auth_url'])[0].replace('.cf.','.').replace('?','').replace('ac','aac')
+    download_song(dl_lnk)
+    os.rename(f"{os.getcwd()}\\test.mp3",f"{path}\\{title}.mp3")
 
-obj=dl(lnk['auth_url'],path)        # Proceed to download song at given path
-obj.start()
-
-rename = newest(path)               # Find latest file in given path and properly rename it
-os.rename(rename,f'{path}//{title}.m4a')
+elif n=='y':
+    import re
+    from pytube import YouTube as yt
+    query = song.replace(' ','+')
+    url = f'https://www.youtube.com/results?search_query={query}'
+    response = r.get(url).text
+    resp = re.findall(r'videoId\":\"(.*?)\"',response)
+    v_ids = [resp[0]]
+    for i in resp:
+        if i not in v_ids:
+            v_ids.append(i)
+    result = [v_ids[j] for j in range(5)]
+    names = []
+    ur = []
+    for i in result:
+        lnk = f'https://www.youtube.com/watch?v={i}'
+        if yt(lnk).length > 60:
+            names.append(yt(lnk).title)
+            ur.append(lnk)
+    for i in range(len(names)):
+       print(f'{i+1}. {names[i]}')
+    c = int(input('Select your choice : '))-1
+    chc = yt(ur[c]).streams.get_audio_only()
+    chc.download()
+    fil = newest(os.getcwd())
+    name=names[c].replace('|',' ')
+    os.rename(fil,f"{path}\\{name}.mp3")
