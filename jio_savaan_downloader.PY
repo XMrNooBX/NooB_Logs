@@ -66,6 +66,14 @@ if n!='y':
 elif n=='y':
     import re
     from pytube import YouTube as yt
+    def progress_function(chunk, file_handle, bytes_remaining):
+        file_size = chc.filesize
+        current = ((file_size - bytes_remaining)/file_size)
+        percent = ('{0:.1f}').format(current*100)
+        progress = int(50*current)
+        status = '█' * progress + '-' * (50 - progress)
+        print('\r'+' ↳ |{bar}| {percent}%  ({x}Mb)'.format(bar=status, percent=percent, x=round((file_size)/(1024*1024),2)),end='')
+
     query = song.replace(' ','+')
     url = f'https://www.youtube.com/results?search_query={query}'
     response = r.get(url).text
@@ -85,8 +93,8 @@ elif n=='y':
     for i in range(len(names)):
        print(f'{i+1}. {names[i]}')
     c = int(input('Select your choice : '))-1
-    chc = yt(ur[c]).streams.get_audio_only()
+    chc = yt(ur[c], on_progress_callback=progress_function).streams.filter(only_audio=True)[-1]
     chc.download()
     fil = newest(os.getcwd())
-    name=names[c].replace('|',' ')
+    name=names[c].replace('|',' ').replace(':', " ")
     os.rename(fil,f"{path}\\{name}.mp3")
