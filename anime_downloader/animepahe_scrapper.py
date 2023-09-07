@@ -1,7 +1,8 @@
-import grequests as g
 import requests as r
 import re
 from colorama import Fore
+import asyncio
+import aiohttp
 from tqdm import tqdm
 import os
 def get_query(query:str):
@@ -32,23 +33,35 @@ def show_results_get_id(results:dict):
             ids.append(results[i][3])
     return ids
 
-def show_synopsis(anime_id:str):
-    url = f'https://animepahe.ru/anime/{anime_id}'
-    response = r.get(url).text
-    synopsis = re.findall(r'anime-synopsis">(.*)<', response)[0].replace('<br>', '')
-    print(Fore.CYAN + f'{synopsis}',Fore.RESET)
+async def send_web_request(url):
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                return await response.text()
+        except aiohttp.ClientError as e:
+            print(f"Request error: {e}")
+            return None
 
-def get_ep_id(id:str):
-    link = f'https://animepahe.ru/api?m=release&id={id}&sort=episode_asc&page=1'
-    response = r.get(link).json()['last_page']
-    pages = [i for i in range(1,response+1)]
+async def send_multiple_web_requests(urls):
+    tasks = []
+    for url in urls:
+        tasks.append(send_web_request(url))
+
+    responses = await asyncio.gather(*tasks)
+    return responses
+
+async def main(id:str, last:int):
+    pages = [i for i in range(1,last+1)]
     urls = [f'https://animepahe.ru/api?m=release&id={id}&sort=episode_asc&page={i}' for i in pages]
-    gresp = [g.get(url) for url in urls]
-    data = [g.map(gresp)[i].json()['data'] for i in range(len(gresp))]
+    responses = await send_multiple_web_requests(urls)
     eps = {}
-    for i in data:
-        for j in i:
-            eps.update({j['episode'] : j['session']})
+    for i in responses:
+        ans = re.findall(r'id.*?\"episode\":(.*?),.*?\"session\":\"(.*?)\"',i)
+        for j in ans:
+            eps.update({int(j[0]) : j[1]})
+    l = [i for i in eps.keys()]
+    print ('\nAvailable Episodes are : ',Fore.LIGHTMAGENTA_EX,f'{l[0]} - {l[-1]}', Fore.RESET)
     return eps
 
 def get_ep_link(anime_id:str, ep_id:str):
@@ -77,7 +90,9 @@ def get_stream(url:str):
     stream_lnk = re.findall(r'(https://kwik\.cx/[^"]*)',response)[0]
     return stream_lnk
 
-def download_vid(url:str, title:str, ep:int):
+def download_vid(url:str, title:str, ep):
+    if ep < 10:
+        ep = f"0{ep}"
     a=title.replace(':','')
     b=a.replace('*','')
     c=b.replace('?','')
