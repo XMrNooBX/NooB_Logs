@@ -1,6 +1,8 @@
 import animepahe_scrapper as scrapper
 from colorama import Fore
 from kwik_token import get_dl_link
+import requests as r
+import asyncio
 
 ''' Bulk or indivisual anime downloader from Animepahe By Ashi and SeD''' 
 
@@ -10,16 +12,11 @@ results = scrapper.get_query(query)
 ids = scrapper.show_results_get_id(results)
 n = int(input('\nPick your poison : ')) - 1
 anime_id = ids[n]
+last = r.get(f'https://animepahe.ru/api?m=release&id={anime_id}&sort=episode_asc&page=1').json()["last_page"]
 title = [i for i in results.keys()][n]
-print(Fore.LIGHTYELLOW_EX+'Would you like to see synopsis of chosen Anime?',Fore.LIGHTGREEN_EX+'Y',Fore.WHITE+'/',Fore.LIGHTRED_EX+'N',Fore.WHITE+' : ',Fore.RESET, end='')
-a = input()
-if a.lower() == 'y':
-    scrapper.show_synopsis(anime_id)
-else:
-    print("Ok Then let's proceed to downloading.")
 print(Fore.GREEN+'\nPlease wait while we are getting downloads ready....',Fore.RESET)
-Episodes = scrapper.get_ep_id(anime_id)
-print ('\nAvailable Episodes are : ',Fore.LIGHTMAGENTA_EX,[i for i in Episodes.keys()], Fore.RESET)
+
+eps = asyncio.run(scrapper.main(anime_id, last))
 raw_in = input("Enter all the episodes to download(seperated by single space or by '-' to give range) : ").split(' ')
 ep_in = []
 for i in raw_in:
@@ -32,7 +29,7 @@ for i in raw_in:
 
 dl_links = {}
 for i in ep_in:
-    session = Episodes[i]
+    session = eps[i]
     ep_links = scrapper.get_ep_link(anime_id, session)
     print(Fore.LIGHTGREEN_EX + f"\nAvailable download options for Ep - {i}")
     links = scrapper.show_dlopts_get_link(ep_links)
