@@ -1,4 +1,4 @@
 # NooB_Logs
 
-Anime downloader is not working now...(cloudflare messed things up)
+Anime downloader it doesn't support simultaneous downloading yet.
 rest working
